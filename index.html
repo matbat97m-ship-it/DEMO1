@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Punti in DXF</title>
+  <style>
+    :root {
+      --testo: #252a2e;
+      --secondario: #5a6068;
+      --bordo: #cbcdd6;
+      --sfondo: #ffffff;
+      --sfondo-tenue: #f1f1f6;
+      --blu: #0063a3;
+      --blu-scuro: #004f83;
+      --rosso: #b8141c;
+      --verde: #1e7a3c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 16px 40px;
+      font-family: system-ui, "Segoe UI", Arial, sans-serif;
+      font-size: 14px;
+      line-height: 1.45;
+      color: var(--testo);
+      background: var(--sfondo);
+    }
+    main { max-width: 640px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    h2 { font-size: 15px; margin: 28px 0 10px; }
+    p { margin: 0 0 10px; }
+    code { background: var(--sfondo-tenue); padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+    .nota { color: var(--secondario); font-size: 13px; }
+    .errore { color: var(--rosso); }
+
+    .zona-file {
+      display: block;
+      padding: 18px 16px;
+      border: 1.5px dashed var(--bordo);
+      border-radius: 6px;
+      background: var(--sfondo-tenue);
+      cursor: pointer;
+    }
+    .zona-file.sopra { border-color: var(--blu); background: #e3f0f9; }
+    .zona-file span { display: block; margin-bottom: 8px; font-weight: 600; }
+    .zona-file input { font: inherit; max-width: 100%; }
+
+    #riepilogo { margin-top: 12px; font-weight: 600; }
+    details { margin: 0 0 10px; }
+    summary { cursor: pointer; color: var(--rosso); }
+    details ul { margin: 6px 0 0; padding-left: 20px; font-size: 13px; overflow-wrap: anywhere; }
+
+    .tabella { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { text-align: left; padding: 5px 12px 5px 0; border-bottom: 1px solid #e0e1e9; white-space: nowrap; }
+    th { font-weight: 600; color: var(--secondario); }
+
+    fieldset { border: 0; margin: 0 0 14px; padding: 0; }
+    legend { padding: 0; margin-bottom: 4px; font-weight: 600; }
+    .riga { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+    .riga label { display: inline-flex; align-items: center; gap: 6px; padding: 3px 0; }
+    .campo { display: inline-flex; flex-direction: column; gap: 3px; }
+    .campo input { font: inherit; width: 110px; padding: 5px 8px; border: 1px solid var(--bordo); border-radius: 4px; }
+
+    button {
+      font: inherit;
+      font-weight: 600;
+      padding: 9px 20px;
+      border: 0;
+      border-radius: 4px;
+      color: #ffffff;
+      background: var(--blu);
+      cursor: pointer;
+    }
+    button:hover { background: var(--blu-scuro); }
+    button:disabled { background: #b7b9c3; cursor: not-allowed; }
+    button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--blu); outline-offset: 2px; }
+    .azioni { gap: 10px; }
+    #esito { display: block; margin-top: 10px; color: var(--verde); font-weight: 600; }
+    #esito.attesa { color: var(--secondario); font-weight: 400; }
+    #esito.errore { color: var(--rosso); }
+    #destinazione { margin-top: 12px; }
+    #dest-riga { margin: 0; }
+    #versione { margin: 32px 0 0; font-size: 12px; overflow-wrap: anywhere; }
+
+    /* File e cartelle del progetto Trimble Connect */
+    #da-progetto { margin-top: 12px; }
+    button.secondario { color: var(--blu); background: var(--sfondo); border: 1px solid var(--blu); padding: 8px 16px; }
+    button.secondario:hover { background: #e3f0f9; }
+    button.secondario:disabled { color: var(--secondario); border-color: var(--bordo); background: var(--sfondo-tenue); }
+    button.collegamento { padding: 0; color: var(--blu); background: none; font-weight: 400; text-decoration: underline; }
+    button.collegamento:hover { background: none; color: var(--blu-scuro); }
+    .navigatore { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--bordo); border-radius: 6px; }
+    .nav-percorso { margin: 0 0 8px; overflow-wrap: anywhere; }
+    .nav-stato { margin: 0 0 8px; }
+    .nav-stato:empty { display: none; }
+    .nav-elenco { list-style: none; margin: 0 0 8px; padding: 0; max-height: 280px; overflow-y: auto; border-top: 1px solid #e0e1e9; }
+    .nav-elenco:empty { display: none; }
+    .nav-elenco li { border-bottom: 1px solid #e0e1e9; }
+    button.voce {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 7px 4px; border-radius: 0;
+      color: var(--testo); background: none; font-weight: 400; text-align: left;
+    }
+    button.voce:hover { background: var(--sfondo-tenue); }
+    button.voce::before { content: ""; flex: none; width: 18px; height: 18px; background: center / contain no-repeat; }
+    button.voce.cartella::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%230063a3' d='M3 6a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/%3E%3C/svg%3E"); }
+    button.voce.documento::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='%235a6068' stroke-width='1.8' stroke-linejoin='round' d='M6 3h8l4 4v14H6zM14 3v4h4'/%3E%3C/svg%3E"); }
+    .voce-nome { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .voce-info { flex: none; color: var(--secondario); font-size: 12px; }
+    .nav-piede { justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Punti in DXF</h1>
+    <p>Crea un file DXF da un file di testo con una riga per punto, nel formato <code>ID,E,N,Q,Code</code>.</p>
+    <p id="stato-connect" class="nota" hidden></p>
+
+    <h2>1. File di testo</h2>
+    <label class="zona-file" id="zona">
+      <span>Scegli un file o trascinalo qui</span>
+      <input type="file" id="file" accept=".txt,.csv,.asc,.pts,text/plain">
+    </label>
+    <div id="da-progetto" hidden>
+      <button type="button" id="apri-progetto" class="secondario">Scegli dal progetto Trimble Connect</button>
+      <div id="navigatore" class="navigatore" hidden>
+        <p id="nav-percorso" class="nav-percorso"></p>
+        <p id="nav-stato" class="nav-stato nota" aria-live="polite"></p>
+        <ul id="nav-elenco" class="nav-elenco"></ul>
+        <div class="riga nav-piede">
+          <label><input type="checkbox" id="nav-tutti"> Mostra tutti i file</label>
+          <button type="button" id="nav-chiudi" class="collegamento">Chiudi</button>
+        </div>
+      </div>
+    </div>
+    <p id="riepilogo" aria-live="polite"></p>
+    <details id="scarti" hidden>
+      <summary>Righe scartate</summary>
+      <ul id="elenco-scarti"></ul>
+    </details>
+    <div id="anteprima" class="tabella" hidden>
+      <table>
+        <thead><tr><th>ID</th><th>E</th><th>N</th><th>Q</th><th>Code</th></tr></thead>
+        <tbody id="anteprima-corpo"></tbody>
+      </table>
+      <p id="anteprima-nota" class="nota"></p>
+    </div>
+
+    <h2>2. Opzioni</h2>
+    <fieldset>
+      <legend>Layer dei punti</legend>
+      <div class="riga">
+        <label><input type="radio" name="layer" id="layer-codice" checked> Un layer per ogni codice</label>
+        <label><input type="radio" name="layer" id="layer-unico"> Un solo layer (PUNTI)</label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Testi accanto al punto</legend>
+      <div class="riga">
+        <label><input type="checkbox" id="et-id" checked> ID</label>
+        <label><input type="checkbox" id="et-quota" checked> Quota</label>
+        <label><input type="checkbox" id="et-codice" checked> Codice</label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Quota</legend>
+      <div class="riga">
+        <label><input type="checkbox" id="tre-d" checked> Punti 3D (Q diventa la coordinata Z)</label>
+      </div>
+    </fieldset>
+    <div class="riga">
+      <label class="campo">Altezza dei testi
+        <input type="number" id="altezza" value="0.20" min="0.01" step="0.05">
+      </label>
+      <label class="campo">Decimali della quota
+        <input type="number" id="decimali" value="2" min="0" max="6" step="1">
+      </label>
+    </div>
+
+    <h2>3. File DXF</h2>
+    <div class="riga azioni">
+      <button type="button" id="crea" disabled>Scarica file DXF</button>
+      <button type="button" id="salva" class="secondario" disabled hidden>Salva nel progetto Trimble Connect</button>
+    </div>
+    <div id="destinazione" hidden>
+      <p id="dest-riga">Cartella di destinazione: <strong id="dest-nome"></strong>
+        <button type="button" id="dest-cambia" class="collegamento">Cambia</button></p>
+      <div id="dest-navigatore" class="navigatore" hidden>
+        <p id="dest-percorso" class="nav-percorso"></p>
+        <p id="dest-stato" class="nav-stato nota" aria-live="polite"></p>
+        <ul id="dest-elenco" class="nav-elenco"></ul>
+        <div class="riga nav-piede">
+          <button type="button" id="dest-scegli" class="secondario" disabled>Usa questa cartella</button>
+          <button type="button" id="dest-chiudi" class="collegamento">Annulla</button>
+        </div>
+      </div>
+    </div>
+    <span id="esito" aria-live="polite"></span>
+
+    <p id="versione" class="nota">Versione 4</p>
+  </main>
+
+  <script src="app.js?v=4"></script>
+</body>
+</html>
